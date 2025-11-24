@@ -1,1 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎄 Juego Navideño: Juguetes del Duende Ladrón 🎁</title>
+    <link href="https://fonts.googleapis.com/css2?family=Festive:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 20px; background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #FFFFFF 100%); font-family: 'Festive', cursive, Arial, sans-serif; color: #333; text-align: center; min-height: 100vh; }
+        #container { max-width: 800px; margin: auto; }
+        #map { display: flex; justify-content: space-around; margin: 30px 0; flex-wrap: wrap; }
+        .station { flex: 1 1 150px; padding: 20px; margin: 10px; border: 4px solid #ddd; border-radius: 25px; background: linear-gradient(white, #f0f8ff); cursor: pointer; transition: all 0.3s; font-size: 1.2em; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .station:hover { transform: scale(1.05); }
+        .station.unlocked { border-color: #4CAF50; background: #E8F5E8; }
+        .station.current { border-color: #FFD700; background: linear-gradient(#FFD700, #FFA500); box-shadow: 0 0 30px #FFD700; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.1);} }
+        #content { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); min-height: 450px; }
+        h1, h2 { color: #C41E3A; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+        button { background: linear-gradient(#FF6B35, #F7931E); color: white; border: none; padding: 15px 30px; border-radius: 25px; font-size: 1.1em; cursor: pointer; margin: 10px; font-family: inherit; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s; }
+        button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input { padding: 15px; font-size: 1.1em; border: 3px solid #ddd; border-radius: 15px; width: 350px; max-width: 90%; box-sizing: border-box; }
+        .paywall { text-align: center; }
+        .paywall hr { border: none; height: 3px; background: linear-gradient(#ddd, transparent); margin: 40px 0; }
+        .paywall label { display: block; margin: 25px 0 15px; font-weight: bold; font-size: 1.2em; }
+        @media (max-width: 600px) { #map { flex-direction: column; } .station { margin: 10px 0; } }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>🎄 ¡Juguetes del Duende Ladrón! 🎁</h1>
+        <p>¡Ayuda a fabricar, recuperar y entregar regalos para salvar la Navidad! Ho ho ho... 😈</p>
+        <div id="map">
+            <div class="station" data-lvl="0">🚀 Inicio</div>
+            <div class="station" data-lvl="1">🏭 Fábrica</div>
+            <div class="station" data-lvl="2">🌲 Bosque</div>
+            <div class="station" data-lvl="3">🏠 Casa Noel 🎅</div>
+        </div>
+        <div id="content"></div>
+        <footer style="margin-top:30px; font-size:0.8em; color:#666;">Creado con ❤️ para Navidad 2025 | Pagos seguros via Gumroad</footer>
+    </div>
+    <script>
+        const GUMROAD_PRODUCTS = {
+            1: { name: '🏭 Fábrica de Juguetes', id: 'REPLACE_FABRICA_ID_AQUI', buyUrl: 'https://tunombre.gumroad.com/l/reemplaza_slug_fabrica' },
+            2: { name: '🌲 Bosque Encantado', id: 'REPLACE_BOSQUE_ID_AQUI', buyUrl: 'https://tunombre.gumroad.com/l/reemplaza_slug_bosque' },
+            3: { name: '🏠 Casa de Papá Noel', id: 'REPLACE_CASA_ID_AQUI', buyUrl: 'https://tunombre.gumroad.com/l/reemplaza_slug_casa' }
+        };
 
+        let gameState = JSON.parse(localStorage.getItem('duendeGame') || '{"level":0}');
+        let currentPaywallLevel = 0;
+
+        function save() { localStorage.setItem('duendeGame', JSON.stringify(gameState)); }
+
+        function render() {
+            const content = document.getElementById('content');
+            const stations = document.querySelectorAll('.station');
+            stations.forEach(s => {
+                const lvl = parseInt(s.dataset.lvl);
+                s.classList.toggle('unlocked', lvl <= gameState.level);
+                s.classList.toggle('current', lvl === gameState.level);
+                s.onclick = () => { if (lvl <= gameState.level) { gameState.level = lvl; save(); render(); } };
+            });
+
+            if (gameState.level === 0) {
+                content.innerHTML = `<h2>¡Bienvenido, elfo ayudante! 🎅</h2><p>En la fábrica creas regalos, pero un duende los roba al bosque. ¡Recupéralos!</p><button onclick="showPaywall(1)">💳 Desbloquear Fábrica (5€)</button>`;
+            } else if (gameState.level === 1) {
+                if (!gameState.toy) {
+                    content.innerHTML = `<h2>🏭 ¡Fábrica de Juguetes!</h2><p>Elige qué fabricar con magia navideña:</p><button onclick="chooseToy('muñeca')">👧 Muñeca para niña soñadora</button><button onclick="chooseToy('tren')">🚂 Tren para niño aventurero</button><button onclick="chooseToy('bici')">🚲 Bici para exploradora</button>`;
+                } else {
+                    content.innerHTML = `<h2>¡${gameState.toy.charAt(0).toUpperCase() + gameState.toy.slice(1)} lista! 🎉</h2><p>¡Oh no! 😈 Un duende la roba y huye al bosque riendo...</p><button onclick="showPaywall(2)">🌲 ¡Al Bosque! (5€)</button>`;
+                }
+            } else if (gameState.level === 2) {
+                if (!gameState.path) {
+                    content.innerHTML = `<h2>🌲 ¡Bosque Nevado!</h2><p>Nieve por todos lados... Elige camino:</p><button onclick="choosePath('izq')">❄️ Izquierda: huellas frescas</button><button onclick="choosePath('der')">🌟 Derecha: luces mágicas</button><button onclick="choosePath('cen')">👻 Centro: risas malvadas</button>`;
+                } else if (!gameState.dialogue) {
+                    content.innerHTML = `<h2>😈 ¡Duende encontrado!</h2><p>Lo pillas con tu ${gameState.toy}. ¡Elige diálogo!</p><button onclick="chooseDialogue('agresivo')">⚡ "¡Devuélvelo o te denuncia Papá Noel!"</button><button onclick="chooseDialogue('amigable')">🍪 "¿Galletas por el juguete?"</button><button onclick="chooseDialogue('persecucion')">🏃 "¡Te pillaré, no escaparás!"</button>`;
+                } else {
+                    const outcomes = {agresivo: 'Se asusta y te lo da temblando. 😱', amigable: '¡Acepta galletas feliz! 😊', persecucion: 'Se agota corriendo y se rinde. 🏁'};
+                    content.innerHTML = `<h2>🎉 ¡Juguete recuperado!</h2><p>${outcomes[gameState.dialogue]}</p><button onclick="showPaywall(3)">🏠 ¡A Casa Noel! (5€)</button>`;
+                }
+            } else if (gameState.level === 3) {
+                if (!gameState.kid) {
+                    content.innerHTML = `<h2>🏠 ¡Casa de Papá Noel! 🎅</h2><p>"¡Gracias, elfo! Entrega la ${gameState.toy}:"</p><button onclick="chooseKid('ana')">👧 Ana (ama muñecas)</button><button onclick="chooseKid('pedro')">🚂 Pedro (ama trenes)</button><button onclick="chooseKid('maria')">🚲 María (ama bicis)</button>`;
+                } else {
+                    const matches = {muñeca: 'ana', tren: 'pedro', bici: 'maria'};
+                    const isPerfect = matches[gameState.toy] === gameState.kid;
+                    content.innerHTML = `<h2>✨ ¡Navidad Salvada! 🎄</h2><p>¡${gameState.kid.charAt(0).toUpperCase() + gameState.kid.slice(1)} recibe la ${gameState.toy}! 🎁</p><p>${isPerfect ? '¡Match perfecto! Lágrimas de alegría eterna. ⭐⭐⭐' : '¡Súper feliz! ⭐⭐'}</p><button onclick="resetGame()">🔄 Jugar de Nuevo</button>`;
+                }
+            }
+        }
+
+        function chooseToy(toy) { gameState.toy = toy; save(); render(); }
+        function choosePath(path) { gameState.path = path; save(); render(); }
+        function chooseDialogue(dlg) { gameState.dialogue = dlg; save(); render(); }
+        function chooseKid(kid) { gameState.kid = kid; save(); render(); }
+
+        function showPaywall(nextLevel) {
+            currentPaywallLevel = nextLevel;
+            const product = GUMROAD_PRODUCTS[nextLevel];
+            document.getElementById('content').innerHTML = `
+                <div class="paywall">
+                    <h2>💳 Desbloquear ${product.name} - 5€</h2>
+                    <a href="${product.buyUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:15px 30px; background:#4CAF50; color:white; text-decoration:none; border-radius:25px; font-size:1.2em; margin:10px;">🛒 Comprar Ahora</a>
+                    <p style="font-size:0.9em; color:#666;">(Nueva pestaña. Clave por email en segundos ✅)</p>
+                    <hr>
+                    <label>📧 Pega tu clave:</label>
+                    <input type="text" id="licenseKey" placeholder="ej: ABCD1234-EFGH5678-IJKL9012" autofocus>
+                    <br><button onclick="verifyKey()">✅ Verificar & Desbloquear</button>
+                    <p id="msg" style="font-weight:bold;"></p>
+                    <br><button onclick="render()">← Atrás</button>
+                </div>`;
+        }
+
+        function verifyKey() {
+            const key = document.getElementById('licenseKey').value.trim();
+            const msgEl = document.getElementById('msg');
+            const product = GUMROAD_PRODUCTS[currentPaywallLevel];
+            if (!key) return msgEl.textContent = '¡Ingresa la clave!'; msgEl.style.color = 'red';
+            msgEl.textContent = 'Verificando... ⏳'; msgEl.style.color = 'blue';
+
+            const formData = new URLSearchParams();
+            formData.append('product_id', product.id);
+            formData.append('license_key', key);
+
+            fetch('https://api.gumroad.com/v2/licenses/verify', {
+                method: 'POST',
+                body: formData,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    msgEl.style.color = 'green';
+                    msgEl.textContent = '¡Desbloqueado! 🎉';
+                    gameState.level = currentPaywallLevel;
+                    save();
+                    setTimeout(render, 1500);
+                } else {
+                    msgEl.style.color = 'red';
+                    msgEl.textContent = 'Clave inválida/usos agotados. 😔';
+                }
+            })
+            .catch(() => { msgEl.style.color = 'red'; msgEl.textContent = 'Error conexión. Reintenta.'; });
+        }
+
+        function resetGame() {
+            if (confirm('¿Resetear progreso? Perderás desbloqueos. 😢')) {
+                localStorage.removeItem('duendeGame');
+                gameState = {level: 0};
+                render();
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>
